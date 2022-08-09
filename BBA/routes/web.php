@@ -14,4 +14,5 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', 'App\Http\Controllers\IngresosController@index')->name('index');
-Route::post('/upload', 'App\Http\Controllers\IngresosController@import')->name('import');
+Route::post('/import', 'App\Http\Controllers\IngresosController@importJob')->name('import');
+Route::get('/store', 'App\Http\Controllers\IngresosController@store')->name('store');

@@ -1,59 +1,69 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use File;
 use App\Models\Ingreso;
-use App\Jobs\IngresoCsvProcess;
 use Illuminate\Http\Request;
+use App\Jobs\IngresoCsvProcess;
 use App\Imports\IngresosImport;
 use Illuminate\Support\Facades\Bus;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Storage;
 
 class IngresosController extends Controller
 {
     public function index()
     {
+        IngresosController::createTemp();
         return view('upload');
     }
 
-    /*public function import(Request $request)
+    public function importJob(Request $request)
     {
-        if( $request->has('csv') ) {
-            $csv    = file($request->csv);
-            $chunks = array_chunk($csv,1000);
-            $header = [];
-            $batch  = Bus::batch([])->dispatch();
+        if ($request->has('csv')) {
+            $csv = file($request->csv);
+            $header = $csv[0];
+            unset($csv[0]);
+            $chunks = array_chunk($csv, 1000);
 
             foreach ($chunks as $key => $chunk) {
-            $data = array_map('str_getcsv', $chunk);
-                if($key == 0){
-                    $header = $data[0];
-                    unset($data[0]);
-                }
-                $batch->add(new IngresoCsvProcess($data, $header));
+                $name = "\\tmp{$key}.csv";
+                $path = resource_path('temp');
+                //return $path . $name;
+                file_put_contents($path . $name, $chunk);
             }
-            return $batch;
         }
-        return view ('welcome');
-    }*/
-    /*public function import(Request $request){
-        $tmp_name = $_FILES["csv"]["tmp_name"];
-        //dd($tmp_name);
-        move_uploaded_file($tmp_name, "ingresos.csv");
+        return view('welcome');
+    }
 
-        $csv = fopen("ingresos.csv", "r");
-        dd($csv);
-        while($row = fgetcsv($csv, 0, ";")) {
-            $liste[]=[$row[0].";10.16.".$row[1].".".$row[2]];
-       }
-       fclose($csv);
-    }*/
-
-    public function import(Request $request){
-        Excel::import(new IngresosImport, $request->file);
+    public function import(Request $request)
+    {
+        //Excel::import(new IngresosImport, $request->file);
+        //Excel::queueImport(new IngresosImport, $request->file,null, \Maatwebsite\Excel\Excel::XLSX);
+        //(new IngresosImport)->queue($excelFile, null, \Maatwebsite\Excel\Excel::XLSX);
+        $excelFile = $request->file;
+        Excel::queueImport(new IngresosImport, $request->file, null, \Maatwebsite\Excel\Excel::XLSX);
 
         return redirect('/')->with('success', 'All good!');
     }
 
+    public function createTemp()
+    {
+        $path = resource_path('temp');;
+        if (File::exists($path))
+        {
+            File::deleteDirectory($path);
+            File::makeDirectory($path);
+        }
+        else
+        {
+            File::makeDirectory($path);
+        }
+    }
 
+    public function store()
+    {
+        IngresoCsvProcess::dispatch();
+        return 'stored';
+    }
 }
